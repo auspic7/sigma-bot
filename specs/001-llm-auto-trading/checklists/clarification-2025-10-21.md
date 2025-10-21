@@ -8,6 +8,7 @@
 ## Context
 
 User provided an example of LLM reasoning that demonstrated sophisticated capabilities:
+
 - Simultaneous management of 6 positions (ETH, SOL, XRP, BTC, DOGE, BNB)
 - Direct evaluation of invalidation conditions for each position
 - Structured JSON output with specific fields
@@ -25,7 +26,9 @@ The existing specification was insufficient to support these capabilities, requi
 **User Selection**: **Option A** - Explicitly define action types and JSON schema
 
 **Decision**:
+
 - **Action types defined**:
+
   - `buy_to_enter`: Open new long position
   - `sell_to_enter`: Open new short position (futures)
   - `hold`: Maintain existing position
@@ -50,6 +53,7 @@ The existing specification was insufficient to support these capabilities, requi
 **User Selection**: **Option A** - Multi-coin decision in one API call
 
 **Decision**:
+
 - LLM returns decisions for ALL monitored cryptocurrencies in single JSON response
 - Output format: `{"ETH": {...}, "SOL": {...}, "BTC": {...}, ...}`
 - More cost-efficient (one API call vs multiple)
@@ -63,6 +67,7 @@ The existing specification was insufficient to support these capabilities, requi
 **User Selection**: **Option A** - LLM evaluates directly
 
 **Decision**:
+
 - LLM receives invalidation condition text for each position (e.g., "If price closes below 3800 on a 3-minute candle")
 - LLM receives current market price
 - LLM performs the comparison and logical evaluation
@@ -76,6 +81,7 @@ The existing specification was insufficient to support these capabilities, requi
 **User Selection**: **Option A** - Full leverage/futures support
 
 **Decision**:
+
 - Binance Futures API integration (FR-036)
 - Leverage range: 5x to 40x (FR-038, FR-052)
 - Support long positions (buy_to_enter) and short positions (sell_to_enter) (FR-039)
@@ -90,6 +96,7 @@ The existing specification was insufficient to support these capabilities, requi
 **User Selection**: **Option B** - Structured reasoning recommended but not mandatory
 
 **Decision**:
+
 - FR-021: Prompt templates SHOULD encourage step-by-step analysis
 - Examples: "First check existing positions, then evaluate invalidation conditions, then determine actions"
 - Not mandatory - flexibility for prompt engineering
@@ -101,18 +108,23 @@ The existing specification was insufficient to support these capabilities, requi
 ### New/Updated Functional Requirements
 
 **Core Trading Engine:**
+
 - FR-005: Updated to specify 4 action types and multi-coin decision capability
 
 **LLM Integration:**
+
 - FR-013: Completely rewritten with detailed JSON schema specification for multi-coin responses
 
 **Prompt Management:**
+
 - FR-021: New requirement for structured reasoning encouragement (SHOULD, not MUST)
 
 **Market Data Collection:**
+
 - Renumbered FR-021 → FR-022 (and subsequent +1 due to FR-021 insertion)
 
 **Exchange Integration:**
+
 - FR-036: Updated from "Binance" to "Binance Futures" with leverage support
 - FR-037: Updated authentication (kept same)
 - FR-038: New - futures market orders with configurable leverage (5x-40x)
@@ -122,6 +134,7 @@ The existing specification was insufficient to support these capabilities, requi
 - FR-042: Updated API rate limiting
 
 **Safety and Risk Management:**
+
 - Renumbered FR-043 through FR-050 (previously FR-040 through FR-047)
 - FR-051: New - liquidation risk monitoring with 10% threshold alert
 - FR-052: New - leverage validation and range enforcement
@@ -129,20 +142,24 @@ The existing specification was insufficient to support these capabilities, requi
 ### Updated Entities
 
 **TradingDecision:**
+
 - Updated action types: buy_to_enter | sell_to_enter | hold | close_position (was BUY/SELL/HOLD)
 - Added fields: profit target, stop loss, invalidation condition, leverage, risk USD, justification
 
 **Position:**
+
 - Already had leverage and liquidation_price (no changes needed)
 
 ### Updated Safety Requirements
 
 **Risk Controls:**
+
 - RC-003: New - Liquidation risk limits (reject if liquidation within 10% of current price)
 - RC-004: New - Leverage limits (5x-40x range, default 10x)
 - RC-005 → RC-007: Renumbered
 
 **LLM Safety:**
+
 - LS-003: Completely rewritten with detailed JSON validation requirements including multi-coin structure
 
 ### Updated Success Criteria
@@ -172,6 +189,7 @@ Added SC-002 through SC-018 (was SC-001 through SC-014)
 ### Updated User Story 1 Acceptance Scenarios
 
 Expanded from 8 to 11 scenarios:
+
 - Scenario 1: Updated for Binance Futures and leveraged trades
 - Scenario 2: Updated for multi-coin prompt with invalidation conditions
 - Scenario 3: Updated for 6 active positions with complete details
@@ -220,6 +238,7 @@ Expanded from 8 to 11 scenarios:
 **Specification Completeness**: ✅ COMPLETE
 
 All 5 clarification questions answered and integrated into specification:
+
 - ✅ Action types and JSON structure defined (FR-005, FR-013, LS-003)
 - ✅ Multi-coin decision support specified (FR-005, SC-002, SC-005)
 - ✅ LLM evaluates invalidation conditions (User Story 1 Scenario 4, Assumption 9)
@@ -300,4 +319,3 @@ User Story 1: 11 scenarios (was 8)
 
 Ref: User clarification questions answered (5/5)
 ```
-
