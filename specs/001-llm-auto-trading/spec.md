@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-llm-auto-trading`
 **Created**: 2025-10-21
-**Status**: Draft
+**Status**: Draft  
 **Input**: User description: "우리 앱은 자동으로 코인을 거래해야 한다. 이떄 코인 거래에 대한 판단은 llm 이 진행할 수 있어야 한다. llm 판단은 주기적으로 호출되어야 한다. llm 프롬프트는 지속적으로 업그레이드되어야 하며, 버전이 제대로 추적되어야 한다. 각 거래들, llm 의 매 판단 근거 또한 저장되어야 한다. llm 에는 다양한 자산, 특히 다양한 코인들의 정보가 제공되어야 한다. 시계열 가격 데이터는 기본이고, 기본적으로 얻을 수 있는 다양한 기술적 지표, 희망적으로는 웹을 통해 얻을 수 있는 다양한 정보가 제공될 수 있어야 하고 이는 필요에 따라 추가될 수 있어야 한다. 다양한 모델을 사용할 수 있어야 한다. 거래소와 연결되어 자동화된 거래를 할 수 있어야 한다."
 
 ## User Scenarios & Testing _(mandatory)_
@@ -17,14 +17,17 @@ The system automatically executes cryptocurrency trades based on LLM's analysis 
 
 **Acceptance Scenarios**:
 
-1. **Given** the bot is configured with valid exchange credentials and risk limits, **When** the bot is started in paper trading mode, **Then** the system connects to the exchange, begins periodic market analysis, and simulates trades without using real money
-2. **Given** the bot is running in paper trading mode, **When** an analysis cycle completes, **Then** the system queries account information (available cash, account value, total return, Sharpe ratio) and active positions (symbol, quantity, entry price, current price, unrealized PnL, leverage, exit plan), constructs an LLM prompt including this account context along with market data, and the LLM analyzes all information to provide a trading recommendation with reasoning
-3. **Given** the bot has multiple active positions, **When** the LLM prompt is constructed, **Then** the prompt includes complete details for each position including liquidation price, profit/loss targets, stop loss settings, confidence scores, risk amounts, and notional values to provide full portfolio awareness
-4. **Given** the LLM recommends a BUY action for Bitcoin, **When** risk checks pass (position size within limits, sufficient balance), **Then** a buy order is placed on the exchange and execution details are logged
-5. **Given** the LLM recommends a SELL action, **When** the bot owns the cryptocurrency, **Then** a sell order is placed and profit/loss is calculated and logged
-6. **Given** the LLM recommends a trade that exceeds position size limits, **When** risk checks run, **Then** the trade is rejected, a warning is logged, and no order is placed
-7. **Given** the bot has been validated in paper trading mode, **When** the operator switches to live trading mode with explicit confirmation, **Then** subsequent trades use real money and actual orders are placed on the exchange
-8. **Given** the system encounters an LLM timeout or error, **When** attempting to get a trading decision, **Then** the system logs the error, skips the current cycle, and continues with the next scheduled analysis
+1. **Given** the bot is configured with valid Binance Futures credentials and risk limits, **When** the bot is started in paper trading mode, **Then** the system connects to the exchange, begins periodic market analysis, and simulates leveraged trades without using real money
+2. **Given** the bot is running in paper trading mode, **When** an analysis cycle completes, **Then** the system queries account information (available cash, account value, total return, Sharpe ratio) and all active positions (symbol, quantity, entry price, current price, liquidation price, unrealized PnL, leverage, exit plan with invalidation conditions), constructs an LLM prompt including this comprehensive account context along with market data for all monitored cryptocurrencies, and the LLM analyzes all information to provide trading decisions for multiple coins in a single JSON response
+3. **Given** the bot has 6 active leveraged positions (ETH, SOL, XRP, BTC, DOGE, BNB), **When** the LLM prompt is constructed, **Then** the prompt includes complete details for each position including liquidation price, profit/loss targets, stop loss settings, invalidation conditions (e.g., "If price closes below X on 3-minute candle"), confidence scores, risk amounts, and notional values to provide full portfolio awareness
+4. **Given** the LLM analyzes positions with invalidation conditions, **When** the LLM evaluates each position, **Then** the LLM checks whether invalidation conditions are triggered (e.g., comparing current price to invalidation threshold) and returns 'hold' for positions where conditions are not triggered, or 'close_position' where conditions are triggered
+5. **Given** the LLM returns decisions for 6 cryptocurrencies in JSON format, **When** the system parses the response, **Then** the system extracts action type (buy_to_enter | sell_to_enter | hold | close_position), quantity, leverage (5x-40x), profit target, stop loss, invalidation condition, and justification for each coin
+6. **Given** the LLM recommends buy_to_enter action for Bitcoin with 10x leverage, **When** risk checks pass (position size within limits, sufficient margin, liquidation price >10% from current), **Then** a long futures order is placed on the exchange with specified leverage and execution details are logged
+7. **Given** the LLM recommends sell_to_enter action for Ethereum with 15x leverage, **When** risk checks pass, **Then** a short futures order is placed on the exchange with specified leverage and execution details are logged
+8. **Given** the LLM recommends close_position for an existing position, **When** the position exists and liquidation is not imminent, **Then** the position is closed at market price and final profit/loss is calculated and logged
+9. **Given** the LLM recommends a trade that exceeds position size limits or would create liquidation risk >10%, **When** risk checks run, **Then** the trade is rejected, a warning is logged with specific reason, and no order is placed
+10. **Given** the bot has been validated in paper trading mode for 7 days, **When** the operator switches to live trading mode with explicit confirmation, **Then** subsequent trades use real money and actual leveraged orders are placed on Binance Futures
+11. **Given** the system encounters an LLM timeout or error, **When** attempting to get trading decisions, **Then** the system logs the error, skips the current cycle, and continues with the next scheduled analysis
 
 ---
 
@@ -130,7 +133,11 @@ Every trading decision, LLM reasoning, and trade execution result is stored in a
 - **FR-002**: System MUST support two operating modes: paper trading (simulation) and live trading (real money), with explicit operator confirmation required to switch from paper to live
 - **FR-003**: System MUST execute a periodic trading cycle every 5 minutes by default, with the interval configurable via environment variable or configuration file to allow adjustment based on trading strategy needs (supported range: 1 minute to 24 hours)
 - **FR-004**: System MUST query current market conditions (prices, volumes, order books) at the start of each trading cycle
-- **FR-005**: System MUST invoke an LLM with market data and prompt to generate a trading decision (BUY, SELL, or HOLD) with reasoning
+- **FR-005**: System MUST invoke an LLM with market data and prompt to generate trading decisions for all monitored cryptocurrencies in a single call, with each decision including an action type and reasoning. Supported action types:
+  - **buy_to_enter**: Open a new long position (buying cryptocurrency)
+  - **sell_to_enter**: Open a new short position (selling cryptocurrency short via futures)
+  - **hold**: Maintain existing position without changes
+  - **close_position**: Close an existing position (exit trade)
 - **FR-006**: System MUST validate LLM recommendations against safety rules (position limits, loss limits, balance checks) before execution
 - **FR-007**: System MUST place actual orders on the exchange when in live trading mode and risk checks pass
 - **FR-008**: System MUST log every trading decision with timestamp, cryptocurrency, action, reasoning, and execution result
@@ -145,7 +152,17 @@ Every trading decision, LLM reasoning, and trade execution result is stored in a
   - Portfolio-level risk metrics and exposure
 - **FR-011**: System MUST query and refresh account information and active positions at the start of each trading cycle before constructing the LLM prompt
 - **FR-012**: System MUST enforce timeout limits on LLM API calls (30 seconds maximum)
-- **FR-013**: System MUST parse LLM responses to extract structured trading decisions and reasoning
+- **FR-013**: System MUST parse LLM responses to extract structured trading decisions for multiple cryptocurrencies. Expected response format is a JSON object where each key is a cryptocurrency symbol and each value contains:
+  - **coin**: cryptocurrency symbol (string)
+  - **signal**: action type (buy_to_enter | sell_to_enter | hold | close_position)
+  - **quantity**: trade quantity (float, full current size for hold/close)
+  - **profit_target**: target price for taking profit (float)
+  - **stop_loss**: price for stopping loss (float)
+  - **invalidation_condition**: text description of condition that invalidates the trade thesis (string)
+  - **leverage**: leverage multiplier for futures trading (integer, 5-40)
+  - **confidence**: confidence level in the decision (float, 0-1)
+  - **risk_usd**: risk amount in USD (float)
+  - **justification**: reasoning for entry/exit/close decisions (string, required for buy_to_enter, sell_to_enter, close_position; not required for hold)
 - **FR-014**: System MUST handle LLM failures gracefully by skipping the current cycle and logging errors without crashing
 - **FR-015**: System MUST track and enforce daily LLM API cost budgets to prevent runaway expenses
 
@@ -156,52 +173,57 @@ Every trading decision, LLM reasoning, and trade execution result is stored in a
 - **FR-018**: System MUST tag every logged trading decision with the prompt version and LLM model used
 - **FR-019**: System MUST support creating new prompt versions without requiring code changes or system restart
 - **FR-020**: System MUST preserve historical prompt versions to enable rollback and A/B testing
+- **FR-021**: Prompt templates SHOULD encourage structured reasoning from the LLM by requesting step-by-step analysis (e.g., "First check existing positions, then evaluate invalidation conditions, then determine actions"), but structured reasoning is not mandatory as long as clear justification is provided
 
 **Market Data Collection**
 
-- **FR-021**: System MUST fetch and store historical OHLCV (Open, High, Low, Close, Volume) data for monitored cryptocurrencies
-- **FR-022**: System MUST calculate technical indicators including Simple Moving Average (SMA), Relative Strength Index (RSI), MACD, and Bollinger Bands
-- **FR-023**: System MUST update market data and indicators at the start of each trading cycle to provide fresh information to the LLM
-- **FR-024**: System MUST support adding new technical indicators via a plugin or module system without modifying core trading logic
-- **FR-025**: System MUST store calculated indicator values with timestamps for historical analysis
+- **FR-022**: System MUST fetch and store historical OHLCV (Open, High, Low, Close, Volume) data for monitored cryptocurrencies
+- **FR-023**: System MUST calculate technical indicators including Simple Moving Average (SMA), Relative Strength Index (RSI), MACD, and Bollinger Bands
+- **FR-024**: System MUST update market data and indicators at the start of each trading cycle to provide fresh information to the LLM
+- **FR-025**: System MUST support adding new technical indicators via a plugin or module system without modifying core trading logic
+- **FR-026**: System MUST store calculated indicator values with timestamps for historical analysis
 
 **External Data Sources**
 
-- **FR-026**: System MUST provide a plugin interface for integrating external data sources (news, social sentiment, on-chain metrics)
-- **FR-027**: System MUST allow data source plugins to be enabled or disabled via configuration
-- **FR-028**: System MUST gracefully handle data source failures by continuing with available data and logging warnings
-- **FR-029**: System MUST include active external data source information in LLM prompts when available
+- **FR-027**: System MUST provide a plugin interface for integrating external data sources (news, social sentiment, on-chain metrics)
+- **FR-028**: System MUST allow data source plugins to be enabled or disabled via configuration
+- **FR-029**: System MUST gracefully handle data source failures by continuing with available data and logging warnings
+- **FR-030**: System MUST include active external data source information in LLM prompts when available
 
 **Audit Trail and Logging**
 
-- **FR-030**: System MUST store every trading decision in a structured format including timestamp, cryptocurrency, action (BUY/SELL/HOLD), quantity, price, LLM model, prompt version, and full reasoning text
-- **FR-031**: System MUST store every trade execution result including order ID, execution price, filled quantity, fees, and profit/loss
-- **FR-032**: System MUST provide query capabilities to retrieve decisions by date range, cryptocurrency, outcome, or prompt version
-- **FR-033**: System MUST calculate and store performance metrics including win rate, average return, maximum drawdown, Sharpe ratio, and total profit/loss
-- **FR-034**: System MUST support exporting audit logs in structured formats (CSV, JSON) for external analysis or compliance
+- **FR-031**: System MUST store every trading decision in a structured format including timestamp, cryptocurrency, action type (buy_to_enter/sell_to_enter/hold/close_position), quantity, price, LLM model, prompt version, and full reasoning text
+- **FR-032**: System MUST store every trade execution result including order ID, execution price, filled quantity, fees, and profit/loss
+- **FR-033**: System MUST provide query capabilities to retrieve decisions by date range, cryptocurrency, outcome, or prompt version
+- **FR-034**: System MUST calculate and store performance metrics including win rate, average return, maximum drawdown, Sharpe ratio, and total profit/loss
+- **FR-035**: System MUST support exporting audit logs in structured formats (CSV, JSON) for external analysis or compliance
 
 **Exchange Integration**
 
-- **FR-035**: System MUST initially support Binance exchange (selected for largest global trading volume, extensive cryptocurrency pair coverage, and excellent API documentation), with architecture designed to allow additional exchange integrations in the future
-- **FR-036**: System MUST authenticate with exchange APIs using API key and secret stored securely in environment variables
-- **FR-037**: System MUST support market orders (immediate execution at current price) for all trading actions
-- **FR-038**: System MUST query account balance and active positions before attempting to place orders to prevent insufficient funds errors and to provide context awareness
-- **FR-039**: System MUST handle exchange API rate limits by throttling requests and respecting rate limit headers
+- **FR-036**: System MUST initially support Binance Futures exchange API (selected for largest global trading volume, leverage trading support, extensive cryptocurrency pair coverage, and excellent API documentation), with architecture designed to allow additional exchange integrations in the future
+- **FR-037**: System MUST authenticate with exchange APIs using API key and secret stored securely in environment variables
+- **FR-038**: System MUST support futures market orders with configurable leverage (5x to 40x) for all trading actions
+- **FR-039**: System MUST support both long positions (buy_to_enter) and short positions (sell_to_enter) via futures contracts
+- **FR-040**: System MUST query account balance, active positions, and liquidation prices before attempting to place orders to prevent insufficient funds errors and to provide context awareness
+- **FR-041**: System MUST monitor liquidation prices for all open positions and include this information in LLM prompts for risk awareness
+- **FR-042**: System MUST handle exchange API rate limits by throttling requests and respecting rate limit headers
 
 **Safety and Risk Management**
 
-- **FR-040**: System MUST enforce maximum position size limit per cryptocurrency (defined in configuration, not to exceed $1000 per position by default)
-- **FR-041**: System MUST enforce maximum loss per trade limit ($100 default) and maximum loss per day limit ($500 default)
-- **FR-042**: System MUST implement a kill switch mechanism that immediately cancels all pending orders and stops all trading activity
-- **FR-043**: System MUST operate in paper trading mode by default, requiring explicit configuration flag to enable live trading
-- **FR-044**: System MUST validate that real money trading flag is set before executing live trades, with operator confirmation required
-- **FR-045**: System MUST implement rate limiting on order placement (maximum 10 orders per minute by default) to prevent runaway execution
-- **FR-046**: System MUST enter safety lockdown mode if daily loss limit is reached, preventing new positions until the next day
-- **FR-047**: System MUST calculate and monitor portfolio-level exposure and risk concentration across all active positions to prevent over-exposure to any single asset or correlated assets
+- **FR-043**: System MUST enforce maximum position size limit per cryptocurrency (defined in configuration, not to exceed $1000 per position by default)
+- **FR-044**: System MUST enforce maximum loss per trade limit ($100 default) and maximum loss per day limit ($500 default)
+- **FR-045**: System MUST implement a kill switch mechanism that immediately cancels all pending orders and stops all trading activity
+- **FR-046**: System MUST operate in paper trading mode by default, requiring explicit configuration flag to enable live trading
+- **FR-047**: System MUST validate that real money trading flag is set before executing live trades, with operator confirmation required
+- **FR-048**: System MUST implement rate limiting on order placement (maximum 10 orders per minute by default) to prevent runaway execution
+- **FR-049**: System MUST enter safety lockdown mode if daily loss limit is reached, preventing new positions until the next day
+- **FR-050**: System MUST calculate and monitor portfolio-level exposure and risk concentration across all active positions to prevent over-exposure to any single asset or correlated assets
+- **FR-051**: System MUST monitor liquidation risk for leveraged positions and alert when liquidation price is within 10% of current price
+- **FR-052**: System MUST validate leverage values are within allowed range (5x-40x) and enforce lower limits for higher-risk market conditions
 
 ### Key Entities _(include if feature involves data)_
 
-- **TradingDecision**: Represents a single LLM-generated trading decision. Attributes: timestamp, cryptocurrency symbol, action (BUY/SELL/HOLD), recommended quantity, confidence score, reasoning text, LLM model identifier, prompt version, market data snapshot at decision time, account snapshot at decision time.
+- **TradingDecision**: Represents a single LLM-generated trading decision for one cryptocurrency. Attributes: timestamp, cryptocurrency symbol, action (buy_to_enter | sell_to_enter | hold | close_position), recommended quantity, profit target price, stop loss price, invalidation condition text, leverage multiplier, confidence score, risk USD, justification text (for entry/exit/close), LLM model identifier, prompt version, market data snapshot at decision time, account snapshot at decision time.
 
 - **TradeExecution**: Represents an actual trade executed on the exchange. Attributes: execution timestamp, cryptocurrency symbol, order type (BUY/SELL), quantity, execution price, fees, exchange order ID, profit/loss, related TradingDecision ID.
 
@@ -227,15 +249,17 @@ Every trading decision, LLM reasoning, and trade execution result is stored in a
 
 - **RC-001**: Position size limits - Maximum $1000 USD equivalent per cryptocurrency position, enforced at code level before order placement, configurable via environment variable but hardcoded minimum of $10 and maximum of $10,000
 - **RC-002**: Loss limits - Maximum $100 loss per trade (enforced via stop-loss or position size calculation) and maximum $500 total loss per day, enforced by safety lockdown mechanism that prevents new positions when threshold reached
-- **RC-003**: Kill switch - Emergency shutdown mechanism accessible via configuration file flag (`kill_switch_enabled=true` in designated file), API endpoint, or command-line signal, immediately cancels all orders and freezes trading state
-- **RC-004**: Dry-run mode - System defaults to paper trading mode on first run, requiring explicit `ENABLE_LIVE_TRADING=true` environment variable AND operator confirmation command to activate real money trading, with warning messages displayed before live mode activation
-- **RC-005**: Rate limiting - Maximum 10 orders per minute to prevent runaway execution, enforced by order placement throttle with exponential backoff if limit approached, configurable but hardcoded maximum of 60 orders per minute to prevent exchange API bans
+- **RC-003**: Liquidation risk limits - System MUST reject any trade where liquidation price would be within 10% of current market price, enforced before order placement, leverage automatically reduced if risk exceeds threshold
+- **RC-004**: Leverage limits - Minimum 5x, maximum 40x leverage enforced at code level, default conservative leverage (10x) for new positions, higher leverage requires explicit justification in LLM reasoning
+- **RC-005**: Kill switch - Emergency shutdown mechanism accessible via configuration file flag (`kill_switch_enabled=true` in designated file), API endpoint, or command-line signal, immediately cancels all orders and freezes trading state
+- **RC-006**: Dry-run mode - System defaults to paper trading mode on first run, requiring explicit `ENABLE_LIVE_TRADING=true` environment variable AND operator confirmation command to activate real money trading, with warning messages displayed before live mode activation
+- **RC-007**: Rate limiting - Maximum 10 orders per minute to prevent runaway execution, enforced by order placement throttle with exponential backoff if limit approached, configurable but hardcoded maximum of 60 orders per minute to prevent exchange API bans
 
 **LLM Safety** (per Constitution Principle V, if LLM used):
 
 - **LS-001**: Timeout limits - 30 seconds maximum per LLM API call, enforced at HTTP client level, with automatic retry once if timeout occurs, then skip cycle if second attempt times out
 - **LS-002**: Cost controls - $10 USD daily budget for LLM API calls by default, tracked via token usage counter, trading paused automatically if budget exceeded until next day, configurable via `LLM_DAILY_BUDGET` environment variable
-- **LS-003**: Response validation - LLM responses must be parseable JSON containing required fields (action, reasoning, confidence), must contain valid action value (BUY/SELL/HOLD), reasoning text must be non-empty (minimum 10 characters), confidence score must be between 0 and 100
+- **LS-003**: Response validation - LLM responses must be parseable JSON object with cryptocurrency symbols as keys, each value must contain required fields (coin, signal, quantity, profit_target, stop_loss, invalidation_condition, leverage, confidence, risk_usd), signal must be valid action type (buy_to_enter | sell_to_enter | hold | close_position), justification text required for entry/exit/close actions (minimum 10 characters), confidence score must be between 0 and 1, leverage must be integer between 5 and 40
 - **LS-004**: Fallback strategy - If LLM call fails or times out, log error and skip current trading cycle, continue with next scheduled cycle, if 3 consecutive failures occur, enter HOLD-only safety mode (no new positions, only allow closing existing positions), send alert notification to operator
 
 ## Success Criteria _(mandatory)_
@@ -243,29 +267,35 @@ Every trading decision, LLM reasoning, and trade execution result is stored in a
 ### Measurable Outcomes
 
 - **SC-001**: Trading decisions occur automatically at configured intervals without operator intervention (system uptime >99% excluding maintenance windows)
-- **SC-002**: Every trading decision includes clear reasoning text from the LLM explaining the rationale, with reasoning text averaging at least 50 words
-- **SC-003**: LLM prompts include complete account context (available cash, account value, total return, Sharpe ratio) and all active positions with their full details (entry price, current price, PnL, leverage, exit plans, risk amounts) for 100% of trading cycles
-- **SC-004**: System operates in paper trading mode successfully for minimum 7 consecutive days without crashes, executing at least 100 trading cycles during validation period
-- **SC-005**: All trades and decisions are logged with complete audit trail, with 100% of trading decisions retrievable from logs including timestamp, reasoning, outcome, and account snapshot at decision time
-- **SC-006**: Safety mechanisms prevent losses exceeding configured limits, with 0 instances of daily loss limit being exceeded undetected
-- **SC-007**: Prompt version changes take effect within one trading cycle (typically <5 minutes) without requiring system restart
-- **SC-008**: LLM decision generation completes within 30 seconds for 95% of requests, with remaining 5% handled gracefully via timeout mechanism
-- **SC-009**: System survives exchange API outages by pausing trading and automatically resuming when connectivity restores, with recovery time <60 seconds after API availability confirmed
-- **SC-010**: Operator can switch between different LLM models (GPT-4, Claude) and observe decision differences within a single trading session
-- **SC-011**: Kill switch activation stops all trading activity within 5 seconds, with 0 orders executed after kill switch triggered
-- **SC-012**: Audit logs support performance analysis queries, with ability to retrieve decisions by prompt version, time range, or outcome in <2 seconds for 1000 decisions
-- **SC-013**: System operates within LLM cost budget, with actual daily LLM costs not exceeding configured budget by more than 5% (accounting for request timing edge cases)
-- **SC-014**: Account information refresh (querying balances and positions) completes within 5 seconds for 99% of cycles to avoid blocking trading decisions
+- **SC-002**: LLM generates decisions for multiple cryptocurrencies in a single API call (batch decision), with decisions for all monitored cryptocurrencies (typically 6-10 coins) returned in one JSON response
+- **SC-003**: Every trading decision includes clear justification text for entry/exit/close actions, with justification text averaging at least 50 words for non-hold decisions
+- **SC-004**: LLM prompts include complete account context (available cash, account value, total return, Sharpe ratio) and all active positions with their full details (entry price, current price, liquidation price, PnL, leverage, exit plans including invalidation conditions, risk amounts) for 100% of trading cycles
+- **SC-005**: System correctly parses and validates LLM JSON responses containing multiple coin decisions with all required fields (coin, signal, quantity, profit_target, stop_loss, invalidation_condition, leverage, confidence, risk_usd, justification) for 99%+ of trading cycles
+- **SC-006**: System operates in paper trading mode successfully for minimum 7 consecutive days without crashes, executing at least 100 trading cycles during validation period
+- **SC-007**: All trades and decisions are logged with complete audit trail, with 100% of trading decisions retrievable from logs including timestamp, action type, reasoning, outcome, and account snapshot at decision time
+- **SC-008**: Leverage trading executes correctly for both long (buy_to_enter) and short (sell_to_enter) positions with specified leverage (5x-40x), with 100% of leveraged orders placed successfully when risk checks pass
+- **SC-009**: Liquidation prices are calculated and monitored for all leveraged positions, with alerts triggered when liquidation risk exceeds threshold (within 10% of current price)
+- **SC-010**: Safety mechanisms prevent losses exceeding configured limits, with 0 instances of daily loss limit being exceeded undetected, and 0 instances of liquidation occurring due to insufficient monitoring
+- **SC-011**: Prompt version changes take effect within one trading cycle (typically <5 minutes) without requiring system restart
+- **SC-012**: LLM decision generation completes within 30 seconds for 95% of multi-coin requests, with remaining 5% handled gracefully via timeout mechanism
+- **SC-013**: System survives exchange API outages by pausing trading and automatically resuming when connectivity restores, with recovery time <60 seconds after API availability confirmed
+- **SC-014**: Operator can switch between different LLM models (GPT-4, Claude) and observe decision differences within a single trading session
+- **SC-015**: Kill switch activation stops all trading activity within 5 seconds, with 0 orders executed after kill switch triggered
+- **SC-016**: Audit logs support performance analysis queries, with ability to retrieve decisions by prompt version, time range, outcome, or action type in <2 seconds for 1000 decisions
+- **SC-017**: System operates within LLM cost budget, with actual daily LLM costs not exceeding configured budget by more than 5% (accounting for request timing edge cases)
+- **SC-018**: Account information refresh (querying balances, positions, and liquidation prices) completes within 5 seconds for 99% of cycles to avoid blocking trading decisions
 
 ### Assumptions
 
-- **Assumption 1**: Operator has obtained valid API credentials from chosen cryptocurrency exchange with trading permissions enabled
+- **Assumption 1**: Operator has obtained valid API credentials from Binance Futures exchange with futures trading permissions and sufficient margin balance
 - **Assumption 2**: Operator has obtained valid API keys for LLM providers (OpenAI and/or Anthropic) with sufficient quota for trading frequency
 - **Assumption 3**: Trading environment has reliable internet connectivity with latency <500ms to exchange APIs
 - **Assumption 4**: Operator accepts that LLM trading decisions are probabilistic and past performance does not guarantee future results
-- **Assumption 5**: Initial deployment will focus on major cryptocurrencies (Bitcoin, Ethereum) rather than all available trading pairs
-- **Assumption 6**: Operator will monitor paper trading results before enabling live trading mode
-- **Assumption 7**: Market data from exchange APIs is sufficiently accurate and timely for trading decisions (no separate data vendor required initially)
-- **Assumption 8**: Trading occurs during normal market conditions, not during extreme volatility events or exchange outages (circuit breakers may need manual intervention)
-- **Assumption 9**: Operator understands that cryptocurrency trading involves financial risk and the system's safety mechanisms reduce but do not eliminate risk
-- **Assumption 10**: Regulatory compliance for automated trading in operator's jurisdiction is the operator's responsibility, not provided by the system
+- **Assumption 5**: Operator understands leverage trading risks including liquidation risk, amplified losses, and the need for active position monitoring
+- **Assumption 6**: Initial deployment will monitor 6-10 major cryptocurrency pairs that have sufficient liquidity for futures trading (e.g., BTC, ETH, BNB, SOL, XRP, DOGE)
+- **Assumption 7**: Operator will monitor paper trading results for minimum 7 days and validate leverage calculations before enabling live trading mode
+- **Assumption 8**: Market data from exchange APIs is sufficiently accurate and timely for trading decisions (no separate data vendor required initially)
+- **Assumption 9**: LLM is capable of understanding and correctly interpreting invalidation conditions expressed in natural language (e.g., "price closes below X on 3-minute candle", "4-hour MACD crosses below Y")
+- **Assumption 10**: Trading occurs during normal market conditions, not during extreme volatility events or exchange outages (circuit breakers may need manual intervention)
+- **Assumption 11**: Operator understands that cryptocurrency trading with leverage involves significant financial risk and the system's safety mechanisms reduce but do not eliminate risk of loss or liquidation
+- **Assumption 12**: Regulatory compliance for automated futures trading in operator's jurisdiction is the operator's responsibility, not provided by the system

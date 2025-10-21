@@ -31,6 +31,7 @@ Enhanced the specification to explicitly include comprehensive account informati
 **Renumbered Requirements:**
 
 Due to additions, all requirements from FR-021 onwards were renumbered (+2 from original):
+
 - Old FR-020 → New FR-021 (Market Data Collection start)
 - Old FR-045 → New FR-046 (Safety lockdown)
 - Added FR-047 (Portfolio exposure monitoring)
@@ -83,23 +84,23 @@ Due to additions, all requirements from FR-021 onwards were renumbered (+2 from 
 
 ### Requirements Traceability
 
-| User Request Element | Specification Location |
-| -------------------- | ---------------------- |
-| Current Total Return % | FR-010, AccountSnapshot entity, SC-003 |
-| Available Cash | FR-010, AccountSnapshot entity, SC-003 |
-| Current Account Value | FR-010, AccountSnapshot entity, SC-003 |
-| Sharpe Ratio | FR-010, FR-033, AccountSnapshot entity, SC-003 |
-| Position: symbol, quantity | FR-010, Position entity |
-| Position: entry_price, current_price | FR-010, Position entity |
-| Position: liquidation_price | FR-010, Position entity, User Story 1 Scenario 3 |
-| Position: unrealized_pnl | FR-010, Position entity, User Story 1 Scenario 3 |
-| Position: leverage | FR-010, Position entity, User Story 1 Scenario 3 |
+| User Request Element                                                   | Specification Location                           |
+| ---------------------------------------------------------------------- | ------------------------------------------------ |
+| Current Total Return %                                                 | FR-010, AccountSnapshot entity, SC-003           |
+| Available Cash                                                         | FR-010, AccountSnapshot entity, SC-003           |
+| Current Account Value                                                  | FR-010, AccountSnapshot entity, SC-003           |
+| Sharpe Ratio                                                           | FR-010, FR-033, AccountSnapshot entity, SC-003   |
+| Position: symbol, quantity                                             | FR-010, Position entity                          |
+| Position: entry_price, current_price                                   | FR-010, Position entity                          |
+| Position: liquidation_price                                            | FR-010, Position entity, User Story 1 Scenario 3 |
+| Position: unrealized_pnl                                               | FR-010, Position entity, User Story 1 Scenario 3 |
+| Position: leverage                                                     | FR-010, Position entity, User Story 1 Scenario 3 |
 | Position: exit_plan (profit_target, stop_loss, invalidation_condition) | FR-010, Position entity, User Story 1 Scenario 3 |
-| Position: confidence | FR-010, Position entity, User Story 1 Scenario 3 |
-| Position: risk_usd | FR-010, Position entity, User Story 1 Scenario 3 |
-| Position: order IDs (sl_oid, tp_oid, entry_oid) | FR-010, Position entity |
-| Position: wait_for_fill | Position entity |
-| Position: notional_usd | FR-010, Position entity, User Story 1 Scenario 3 |
+| Position: confidence                                                   | FR-010, Position entity, User Story 1 Scenario 3 |
+| Position: risk_usd                                                     | FR-010, Position entity, User Story 1 Scenario 3 |
+| Position: order IDs (sl_oid, tp_oid, entry_oid)                        | FR-010, Position entity                          |
+| Position: wait_for_fill                                                | Position entity                                  |
+| Position: notional_usd                                                 | FR-010, Position entity, User Story 1 Scenario 3 |
 
 ## Impact Assessment
 
@@ -135,4 +136,3 @@ Due to additions, all requirements from FR-021 onwards were renumbered (+2 from 
    - Sharpe ratio calculation methodology
    - Portfolio exposure risk calculation algorithm (FR-047)
    - Prompt construction strategy to handle variable number of positions without exceeding LLM context limits
-
