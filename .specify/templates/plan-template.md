@@ -17,11 +17,14 @@
   the iteration process.
 -->
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Language/Version**: Python 3.11+ (per constitution: latest stable Python)  
+**Package Manager**: uv (per constitution: mandatory, exclusive)  
+**Primary Dependencies**: [e.g., ccxt, pandas, structlog, openai/anthropic SDKs or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, SQLite, CSV files or N/A]  
+**Testing**: pytest with pytest-asyncio (per constitution)  
+**Type Checking**: mypy strict mode (per constitution)  
+**Linting/Formatting**: ruff (per constitution)  
+**Target Platform**: [e.g., Linux server, Docker container, WSL2 or NEEDS CLARIFICATION]
 **Project Type**: [single/web/mobile - determines source structure]  
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
@@ -29,9 +32,26 @@
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-[Gates determined based on constitution file]
+**Reference**: `.specify/memory/constitution.md`
+
+### Mandatory Checks
+
+- [ ] **Root Cause Analysis**: Implementation addresses root causes, no workarounds documented
+- [ ] **Modern Tooling**: All dependencies use `uv`, versions are current and maintained
+- [ ] **Documentation-Driven**: All external APIs/libraries researched via Context7/official docs
+- [ ] **Test-First**: TDD workflow planned (tests → approval → fail → implement)
+- [ ] **LLM Integration**: If using LLM, patterns include timeouts, validation, fallbacks, cost controls
+- [ ] **Risk Management**: If trading logic, safety controls defined (limits, kill switch, dry-run mode)
+- [ ] **Observability**: Structured logging, metrics, and tracing planned for all components
+
+### Complexity Justification Required If:
+
+- Adding new abstraction layers beyond standard patterns
+- Introducing additional external dependencies
+- Creating new service boundaries or projects
+- Implementing custom frameworks vs using established ones
 
 ## Project Structure
 
@@ -48,6 +68,7 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
+
 <!--
   ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
   for this feature. Delete unused options and expand the chosen structure with
@@ -96,10 +117,9 @@ directories captured above]
 
 ## Complexity Tracking
 
-*Fill ONLY if Constitution Check has violations that must be justified*
+_Fill ONLY if Constitution Check has violations that must be justified_
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
-
+| Violation                  | Why Needed         | Simpler Alternative Rejected Because |
+| -------------------------- | ------------------ | ------------------------------------ |
+| [e.g., 4th project]        | [current need]     | [why 3 projects insufficient]        |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient]  |

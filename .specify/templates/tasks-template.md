@@ -12,31 +12,33 @@ description: "Task list template for feature implementation"
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
+
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
 ## Path Conventions
+
 - **Single project**: `src/`, `tests/` at repository root
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
-<!-- 
+<!--
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
-  
+
   The /speckit.tasks command MUST replace these with actual tasks based on:
   - User stories from spec.md (with their priorities P1, P2, P3...)
   - Feature requirements from plan.md
   - Entities from data-model.md
   - Endpoints from contracts/
-  
+
   Tasks MUST be organized by user story so each story can be:
   - Implemented independently
   - Tested independently
   - Delivered as an MVP increment
-  
+
   DO NOT keep these sample tasks in the generated tasks.md file.
   ============================================================================
 -->
@@ -46,8 +48,10 @@ description: "Task list template for feature implementation"
 **Purpose**: Project initialization and basic structure
 
 - [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+- [ ] T002 Initialize Python project with uv (pyproject.toml, uv.lock)
+- [ ] T003 [P] Configure ruff for linting and formatting (per Constitution II)
+- [ ] T004 [P] Configure mypy strict mode for type checking (per Constitution II)
+- [ ] T005 [P] Setup pytest with pytest-asyncio (per Constitution IV)
 
 ---
 
@@ -59,12 +63,14 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T006 Setup structured logging with structlog (JSON format, per Constitution VII)
+- [ ] T007 [P] Implement metrics collection framework (per Constitution VII)
+- [ ] T008 [P] Configure error tracking and tracing (per Constitution VII)
+- [ ] T009 [P] Setup environment configuration management (.env for dev, env vars for prod)
+- [ ] T010 Setup database schema and migrations framework (if needed)
+- [ ] T011 Create base models/entities that all stories depend on
+- [ ] T012 [P] Implement safety controls framework (kill switch, limits) if trading bot (per Constitution VI)
+- [ ] T013 [P] Setup LLM client with timeout/cost controls if using LLM (per Constitution V)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -80,8 +86,8 @@ Examples of foundational tasks (adjust based on your project):
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test\_[name].py
+- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test\_[name].py
 
 ### Implementation for User Story 1
 
@@ -104,8 +110,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test\_[name].py
+- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test\_[name].py
 
 ### Implementation for User Story 2
 
@@ -126,8 +132,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test\_[name].py
+- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test\_[name].py
 
 ### Implementation for User Story 3
 
@@ -181,14 +187,13 @@ Examples of foundational tasks (adjust based on your project):
 - Core implementation before integration
 - Story complete before moving to next priority
 
-### Parallel Opportunities
+### Parallel Opportunities (for tooling/async execution)
 
-- All Setup tasks marked [P] can run in parallel
+- All Setup tasks marked [P] can run in parallel (via tooling or async execution)
 - All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
 - All tests for a user story marked [P] can run in parallel
 - Models within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
+- Note: [P] indicates independent files/tasks, useful for context switching or future parallelization
 
 ---
 
@@ -216,24 +221,16 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 4. **STOP and VALIDATE**: Test User Story 1 independently
 5. Deploy/demo if ready
 
-### Incremental Delivery
+### Incremental Delivery (Solo Development)
 
 1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
-3. Add User Story 2 → Test independently → Deploy/Demo
-4. Add User Story 3 → Test independently → Deploy/Demo
+2. Add User Story 1 → Test independently → **Commit** → Deploy/Demo (MVP!)
+3. Add User Story 2 → Test independently → **Commit** → Deploy/Demo
+4. Add User Story 3 → Test independently → **Commit** → Deploy/Demo
 5. Each story adds value without breaking previous stories
+6. Commit after each valid, working unit per Constitution VIII
 
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: User Story 1
-   - Developer B: User Story 2
-   - Developer C: User Story 3
-3. Stories complete and integrate independently
+**Strategy**: Focus on one user story at a time in priority order (P1 → P2 → P3). This ensures continuous progress and clear history tracking through frequent commits.
 
 ---
 
@@ -242,10 +239,12 @@ With multiple developers:
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
-- Verify tests fail before implementing
-- Commit after each task or logical group
+- **Test-First (Constitution IV)**: Write tests → Get approval → Verify failure → Implement → Green
+- **Root Cause Focus (Constitution I)**: When bugs found, investigate root cause before fixing
+- **Documentation-Driven (Constitution III)**: Use Context7 for unfamiliar APIs before implementation
+- **Commit Discipline (Constitution VIII)**: Commit after each valid, working unit of modification
+  - Each commit = functional state (code runs)
+  - Use conventional commit format: `type(scope): description`
+  - Never commit broken code to main branch
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
-
-
-
